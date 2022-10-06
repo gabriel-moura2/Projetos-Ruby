@@ -1,9 +1,7 @@
 # frozen_string_literal: true
 
-require 'ruby2d'
+require 'neural-network'
 
-x = Circle.new
+nn = NeuralNetwork.new([6, 6, 2])
 
-x.color = 'green'
-
-show
+puts nn.to_hash
