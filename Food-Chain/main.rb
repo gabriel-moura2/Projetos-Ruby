@@ -12,6 +12,8 @@ end
 ##
 # Classe para representar a posição dos objetos
 class Point
+  attr_reader :x, :y
+
   def initialize(position_x, position_y)
     @x = position_x
     @y = position_y
@@ -23,14 +25,6 @@ class Point
 
   def -(other)
     Point.new(x - other.x, y - other.y)
-  end
-
-  def x
-    Conf::PIXEL * @x + Conf::PIXEL / 2
-  end
-
-  def y
-    Conf::PIXEL * @y + Conf::PIXEL / 2
   end
 
   def distance(other)
@@ -45,17 +39,37 @@ end
 ##
 # Superclasse para representar os objetos
 class GameObject
+  attr_reader :point
+
   def initialize(point, figure)
     @point = point
     @figure = figure
     @brain = nil
+    @vision = []
+  end
+
+  def look(objects)
+    @vision = []
+    list = objects.sort { |x| point.distance(x.point) }
+    list.delete(self)
+    list[0, 2].each do |item|
+      @vision << item.point.x - point.x
+      @vision << item.point.y - point.y
+      @vision << item.type
+    end
+  end
+
+  def think
+    @brain.neurons[0] = @vision
+    @brain.feed_forward
+    
   end
 
   def update; end
 
   def draw
-    @figure.x = @point.x
-    @figure.y = @point.y
+    @figure.x = Conf::PIXEL * @point.x
+    @figure.y = Conf::PIXEL * @point.y
   end
 end
 
@@ -65,6 +79,16 @@ class Plant < GameObject
   def initialize(point)
     super point, Circle.new(radius: Conf::PIXEL / 2, color: 'green')
   end
+
+  def look(gameobjects); end
+
+  def think; end
+
+  def update; end
+
+  def type
+    0
+  end
 end
 
 ##
@@ -72,7 +96,12 @@ end
 class Deer < GameObject
   def initialize(point, brain = nil)
     super point, Circle.new(radius: Conf::PIXEL / 2, color: 'blue')
-    @brain = NeuralNetwork.new([6, 6, 5]) unless brain
+    # @brain = NeuralNetwork.new([6, 6, 5]) unless brain
+    @joke = false
+  end
+
+  def type
+    1
   end
 end
 
@@ -81,7 +110,11 @@ end
 class Lion < GameObject
   def initialize(point, brain = nil)
     super point, Circle.new(radius: Conf::PIXEL / 2, color: 'red')
-    @brain = NeuralNetwork.new([6, 6, 4]) unless brain
+    # @brain = NeuralNetwork.new([6, 6, 4]) unless brain
+  end
+
+  def type
+    3
   end
 end
 
@@ -91,9 +124,13 @@ class Game
   def initialize
     @gameobjects = []
     @gameobjects << Deer.new(Point.new(rand(Conf::WIDTH), rand(Conf::HEIGHT)))
+    @gameobjects << Plant.new(Point.new(rand(Conf::WIDTH), rand(Conf::HEIGHT)))
+    @gameobjects << Lion.new(Point.new(rand(Conf::WIDTH), rand(Conf::HEIGHT)))
+    @gameobjects << Deer.new(Point.new(rand(Conf::WIDTH), rand(Conf::HEIGHT)))
   end
 
   def update
+    @gameobjects.each { |x| x.look(@gameobjects) }
     @gameobjects.each(&:update)
   end
 
