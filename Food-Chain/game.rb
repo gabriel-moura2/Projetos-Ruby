@@ -1,12 +1,11 @@
 # frozen_string_literal: true
 
 require 'ruby2d'
-require 'neural-network'
 
 module Conf
-  PIXEL = 40
-  WIDTH = 25
-  HEIGHT = 25
+  PIXEL = 20
+  WIDTH = 30
+  HEIGHT = 30
 end
 
 ##
@@ -14,7 +13,7 @@ end
 class Point
   attr_reader :x, :y
 
-  def initialize(position_x, position_y)
+  def initialize(position_x = 0, position_y = 0)
     @x = position_x
     @y = position_y
   end
@@ -31,8 +30,8 @@ class Point
     x == other.x && y == other.y
   end
 
-  def distance_to(other)
-    Math.sqrt((other.x - x)**2 + (other.y - y)**2)
+  def inside?(point_min, point_max)
+    x.between?(point_min.x, point_max.x) && y.between?(point_min.y, point_max.y)
   end
 
   def to_s
@@ -41,18 +40,18 @@ class Point
 end
 
 ##
-# Classe para representar as plantas
-class Plant
+# Super classe das classes do jogo
+class GameObject
   attr_reader :point
 
-  def initialize(point)
+  def initialize(point, color)
     @point = point
-    @circle = Circle.new radius: Conf::PIXEL / 2, color: 'green'
+    @circle = Circle.new radius: Conf::PIXEL / 2, color: color
   end
 
   def update
-    @circle.x = @point.x * Conf::PIXEL
-    @circle.y = @point.y * Conf::PIXEL
+    @circle.x = @point.x * Conf::PIXEL + Conf::PIXEL / 2
+    @circle.y = @point.y * Conf::PIXEL + Conf::PIXEL / 2
   end
 
   def delete
@@ -61,13 +60,20 @@ class Plant
 end
 
 ##
+# Classe para representar as plantas
+class Plant < GameObject
+  def initialize(point)
+    super point, 'green'
+  end
+end
+
+##
 # Classe para representar cervos
-class Deer
+class Deer < GameObject
   attr_reader :point
 
   def initialize(point)
-    @point = point
-    @circle = Circle.new radius: Conf::PIXEL / 2, color: 'orange'
+    super point, 'orange'
     @escape = false
   end
 
@@ -78,7 +84,9 @@ class Deer
       up: Point.new(0, -1),
       down: Point.new(0, 1)
     }
-    @point += directions[direction] unless @escape
+    start_pos = Point.new
+    end_pos = Point.new(Conf::WIDTH, Conf::HEIGHT)
+    @point += directions[direction] unless @escape || !(point + directions[direction]).inside?(start_pos, end_pos)
   end
 
   def escape!
@@ -87,8 +95,7 @@ class Deer
 
   def update
     @circle.color = @escape ? 'gray' : 'orange'
-    @circle.x = @point.x * Conf::PIXEL
-    @circle.y = @point.y * Conf::PIXEL
+    super
   end
 end
 
@@ -103,7 +110,7 @@ class Game
     @deer = Deer.new(Point.new(rand(Conf::WIDTH), rand(Conf::HEIGHT)))
   end
 
-  def get_input key
+  def get_input(key)
     inputs = {
       'left' => -> { @deer.move :left },
       'right' => -> { @deer.move :right },
@@ -111,18 +118,18 @@ class Game
       'down' => -> { @deer.move :down },
       'space' => -> { @deer.escape! }
     }
-    inputs[key].call
+    inputs[key].call if inputs.key?(key)
   end
 
   def update
     gameobjects.each(&:update)
 
     @plants.each do |plant|
-      if plant.point == @deer.point
-        p = @plants.delete(plant)
-        p.delete
-        @plants << Plant.new(Point.new(rand(Conf::WIDTH), rand(Conf::HEIGHT)))
-      end
+      next unless plant.point == @deer.point
+
+      p = @plants.delete(plant)
+      p.delete
+      @plants << Plant.new(Point.new(rand(Conf::WIDTH), rand(Conf::HEIGHT)))
     end
   end
 
