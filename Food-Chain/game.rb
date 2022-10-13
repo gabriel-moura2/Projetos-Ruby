@@ -13,9 +13,9 @@ end
 class Point
   attr_reader :x, :y
 
-  def initialize(position_x = 0, position_y = 0)
-    @x = position_x
-    @y = position_y
+  def initialize(x, y)
+    @x = x
+    @y = y
   end
 
   def +(other)
@@ -47,6 +47,7 @@ class GameObject
   def initialize(point, color)
     @point = point
     @circle = Circle.new radius: Conf::PIXEL / 2, color: color
+    update
   end
 
   def update
@@ -84,9 +85,7 @@ class Deer < GameObject
       up: Point.new(0, -1),
       down: Point.new(0, 1)
     }
-    start_pos = Point.new
-    end_pos = Point.new(Conf::WIDTH, Conf::HEIGHT)
-    @point += directions[direction] unless @escape || !(point + directions[direction]).inside?(start_pos, end_pos)
+    @point += directions[direction] unless @escape || yield(point + directions[direction])
   end
 
   def escape!
@@ -104,25 +103,20 @@ end
 class Game
   def initialize
     @plants = []
-    4.times do
-      @plants << Plant.new(Point.new(rand(Conf::WIDTH), rand(Conf::HEIGHT)))
-    end
-    @deer = Deer.new(Point.new(rand(Conf::WIDTH), rand(Conf::HEIGHT)))
+    @plants = Array.new(4) { Plant.new(point(rand(Conf::WIDTH), rand(Conf::HEIGHT))) }
+    @deer = Deer.new(point(rand(Conf::WIDTH), rand(Conf::HEIGHT)))
   end
 
   def get_input(key)
-    inputs = {
-      'left' => -> { @deer.move :left },
-      'right' => -> { @deer.move :right },
-      'up' => -> { @deer.move :up },
-      'down' => -> { @deer.move :down },
-      'space' => -> { @deer.escape! }
-    }
-    inputs[key].call if inputs.key?(key)
+    return unless inputs.key?(key)
+
+    inputs[key].call do |pnt|
+      !pnt.inside?(point(0, 0), point(Conf::WIDTH - 1, Conf::HEIGHT - 1))
+    end
   end
 
   def update
-    gameobjects.each(&:update)
+    game_objects.each(&:update)
 
     @plants.each do |plant|
       next unless plant.point == @deer.point
@@ -135,7 +129,21 @@ class Game
 
   private
 
-  def gameobjects
+  def inputs
+    {
+      'left' => ->(&block) { @deer.move :left, &block },
+      'right' => ->(&block) { @deer.move :right, &block },
+      'up' => ->(&block) { @deer.move :up, &block },
+      'down' => ->(&block) { @deer.move :down, &block },
+      'space' => proc { @deer.escape! }
+    }
+  end
+
+  def point(pos_x, pos_y)
+    Point.new pos_x, pos_y
+  end
+
+  def game_objects
     @plants + [@deer]
   end
 end
