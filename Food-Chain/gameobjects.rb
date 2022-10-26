@@ -51,7 +51,7 @@ class GameObject
   def update; end
 
   def to_s
-    "[#{@id}] position #{point}."
+    "[#{@id}] position #{point} | specie #{self.class}"
   end
 end
 
@@ -109,13 +109,15 @@ class NGameObjects
   end
 
   def insert(obj)
-    obj.id = count.positive? ? max_by(&:id).id + 1 : 1 unless obj.is_a? Array
+    obj.id = take_id unless obj.is_a? Array
 
     case obj.class.name
     when 'Plant'
       @plants << obj
     when 'Deer'
       @deers << obj
+    when 'Lion'
+      @lions << obj
     when 'Array'
       obj.each { |o| insert(o) }
     end
@@ -132,6 +134,12 @@ class NGameObjects
     when Array
       obj.each { |o| remove(o) }
     end
+  end
+
+  private
+
+  def take_id
+    count.positive? ? max_by(&:id).id + 1 : 1
   end
 end
 
