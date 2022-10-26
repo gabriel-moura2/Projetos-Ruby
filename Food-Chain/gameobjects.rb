@@ -111,35 +111,37 @@ class NGameObjects
   def insert(obj)
     obj.id = take_id unless obj.is_a? Array
 
-    case obj.class.name
-    when 'Plant'
-      @plants << obj
-    when 'Deer'
-      @deers << obj
-    when 'Lion'
-      @lions << obj
-    when 'Array'
-      obj.each { |o| insert(o) }
-    end
+    a = {
+      'Plant' => -> { @plants << obj },
+      'Deer' => -> { @deers << obj },
+      'Lion' => -> { @lions << obj },
+      'Array' => -> { obj.each { |o| insert(o) } }
+    }
+
+    a[obj.class.name].call
   end
 
   def remove(obj)
-    r = find { |o| o.id == obj.id } unless obj.is_a? Array
+    r = get_by_id(obj.id) unless obj.is_a? Array
 
-    case r.class
-    when Plant
-      @plants.delete(r)
-    when Deer
-      @deers.delete(r)
-    when Array
-      obj.each { |o| remove(o) }
-    end
+    a = {
+      'Plant' => -> { @plants.delete(r) },
+      'Deer' => -> { @deers.delete(r) },
+      'Lion' => -> { @lions.delete(r) },
+      'Array' => -> { obj.each { |o| remove(o) } }
+    }
+
+    a[r.class.name].call
+  end
+
+  def get_by_id(id)
+    find { |o| o.id == id }
   end
 
   private
 
   def take_id
-    count.positive? ? max_by(&:id).id + 1 : 1
+    count.positive? ? max_by(&:id).id + 1 : 0
   end
 end
 
